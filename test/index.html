@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Университет Служба Поддержки</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Login Page -->
+    <div class="login-container" id="loginContainer">
+        <form class="login-form" id="loginForm">
+            <h2>Вход в Службу Поддержки</h2>
+            <input type="text" id="loginLogin" placeholder="Логин" required>
+            <input type="password" id="loginPassword" placeholder="Пароль" required>
+            <button type="submit">Войти</button>
+            <div class="login-message" id="loginMessage"></div>
+        </form>
+    </div>
+    <!-- Main App -->
+    <div id="appMain" style="display:none;">
+        <header class="top-header">
+            <div class="header-left">
+                <h1>Служба Поддержки Университета</h1>
+            </div>
+            <nav class="main-nav">
+                <button class="nav-btn" id="navGeneral">Общее</button>
+                <button class="nav-btn" id="navMyRequests">Мои заявки</button>
+                <button class="nav-btn" id="navNewRequest">Новая заявка</button>
+                <button class="nav-btn" id="navKnowledge">База знаний</button>
+                <button class="nav-btn" id="navFAQ">FAQ</button>
+            </nav>
+            <div class="user-info">
+                <span class="user-fio" id="userFio" style="cursor:pointer;">ФИО</span>
+                <span class="user-role" id="userRole">Роль</span>
+                <div class="user-dropdown" id="userDropdown">
+                    <button id="logoutBtn" class="nav-btn" style="width:100%;text-align:left;">Выйти</button>
+                </div>
+            </div>
+        </header>
+        <div class="container" id="requestContainer" style="display:none;">
+            <aside class="sidebar">
+                <nav>
+                    <ul>
+                        <li class="classification active" data-class="base">Базовые заявки</li>
+                        <li class="classification" data-class="integrated">Интегрированные системы</li>
+                        <li class="classification" data-class="it">ИТ</li>
+                        <li class="classification" data-class="incident">Инциденты</li>
+                    </ul>
+                </nav>
+            </aside>
+            <main class="main-content">
+                <div id="pageRequests" class="page-section" style="display:none;">
+                    <div class="requests" id="requests">
+                        <!-- Request cards will be rendered here by JS -->
+                    </div>
+                </div>
+            </main>
+        </div>
+        <main class="main-content" id="mainPages">
+            <div id="pageGeneral" class="page-section"> 
+                <h2>Общая информация о ИТ-отделе</h2>
+                <ul class="general-info-list">
+                    <li><strong>Команда:</strong> ИТ-поддержка университета</li>
+                    <li><strong>Время работы:</strong> Пн-Пт, 8:00-18:00</li>
+                    <li><strong>Телефон:</strong> +7 777 777 77 77</li>
+                    <li><strong>Адрес:</strong> Университет, Абылай хана 51/53</li>
+                    <li><strong>Email:</strong> it_support@krmu.kz</li>
+                </ul>
+            </div>
+            <div id="pageMyRequests" class="page-section" style="display:none;">
+                <h2>Мои заявки</h2>
+                <p>Здесь будут отображаться ваши созданные заявки (функция скоро появится).</p>
+            </div>
+            <div id="pageKnowledge" class="page-section" style="display:none;">
+                <h2>База знаний</h2>
+                <ul class="knowledge-list">
+                    <li><strong>Как сбросить пароль:</strong> Перейдите на ИТ-портал и нажмите "Забыли пароль?".</li>
+                    <li><strong>Доступ к Wi-Fi:</strong> Используйте свои студенческие данные для входа в сеть Wi-Fi кампуса.</li>
+                    <li><strong>Использование LMS:</strong> Войдите на lms.university.edu с помощью университетской почты.</li>
+                </ul>
+            </div>
+            <div id="pageFAQ" class="page-section" style="display:none;">
+                <h2>Часто задаваемые вопросы</h2>
+                <ul class="faq-list">
+                    <li><strong>Как сбросить пароль от университета?</strong> Перейдите на ИТ-портал и нажмите "Забыли пароль?".</li>
+                    <li><strong>Где посмотреть расписание занятий?</strong> Войдите в студенческий портал и выберите "Мое расписание".</li>
+                    <li><strong>Как связаться с библиотекой?</strong> Напишите на library@university.edu или обратитесь на стойку библиотеки.</li>
+                </ul>
+            </div>
+        </main>
+        <!-- Modal for request form -->
+        <div class="modal-overlay" id="modalOverlay"></div>
+        <div class="modal" id="requestModal">
+            <div class="modal-header">
+                <span id="modalTitle"></span>
+                <button class="modal-close" id="modalClose">&times;</button>
+            </div>
+            <form id="requestForm">
+                <div class="modal-form-group">
+                    <label for="requestDetails">Детали</label>
+                    <textarea id="requestDetails" name="details" placeholder="Опишите вашу проблему или запрос..." required></textarea>
+                </div>
+                <button type="submit" class="modal-submit">Отправить заявку</button>
+                <div id="modalMessage"></div>
+            </form>
+        </div>
+        <footer>
+            <p>&copy; 2025 Служба Поддержки Университета. Все права защищены.</p>
+        </footer>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html> 
