@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Админ-панель</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: #f9f9f9; margin: 0; padding: 2em; color: #333; }
+        h2, h3 { margin-top: 0; }
+        .container { max-width: 1000px; margin: 0 auto; background: #fff; padding: 2em; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        #tabs { display: flex; justify-content: space-between; margin-bottom: 1.5em; }
+        #tabs .left, #tabs .right { display: flex; gap: 1em; }
+        button { padding: 8px 16px; border: none; background: #007BFF; color: white; border-radius: 5px; cursor: pointer; transition: background 0.2s; }
+        button:hover { background: #0056b3; }
+        table { border-collapse: collapse; width: 100%; margin-top: 1em; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+        th { background-color: #f1f1f1; }
+        input, select { padding: 8px; margin: 4px 0; width: 100%; max-width: 300px; border: 1px solid #ccc; border-radius: 4px; }
+        #userMsg, #reqMsg { margin-top: 0.5em; color: green; }
+        .error { color: red; }
+        form { margin-bottom: 1em; }
+        .form-group { margin-bottom: 10px; }
+        .hidden { display: none; }
+        .allowed-types-group { margin-bottom: 10px; }
+        .edit-btn { background: #ffc107; color: #333; margin-left: 8px; }
+        .edit-btn:hover { background: #e0a800; }
+        .modal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.2); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+        .modal-content { background: #fff; padding: 2em; border-radius: 8px; min-width: 320px; max-width: 95vw; box-shadow: 0 4px 24px rgba(0,0,0,0.15); }
+        .modal.hidden { display: none !important; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h2>Админ-панель</h2>
+    <div id="tabs">
+        <div class="left">
+            <button onclick="showTab(0)">Пользователи</button>
+            <button onclick="showTab(1)">Заявки</button>
+        </div>
+        <div class="right">
+            <button onclick="logout()">Выйти</button>
+        </div>
+    </div>
+    <div id="tab-users">
+        <h3>Добавить пользователя</h3>
+        <form id="addUserForm">
+            <div class="form-group"><input placeholder="Логин" id="userLogin" required></div>
+            <div class="form-group"><input placeholder="Пароль" id="userPassword" type="password" required></div>
+            <div class="form-group"><input placeholder="ФИО" id="userFio" required></div>
+            <div class="form-group"><input placeholder="Роль" id="userRole" required></div>
+            <div class="allowed-types-group" id="allowedTypesGroup"></div>
+            <button type="submit">Добавить</button>
+        </form>
+        <div id="userMsg"></div>
+        <h3>Список пользователей</h3>
+        <table id="usersTable">
+            <thead><tr><th>ID</th><th>Логин</th><th>ФИО</th><th>Роль</th><th>Доступные типы</th><th>Действие</th></tr></thead>
+            <tbody></tbody>
+        </table>
+    </div>
+    <div id="tab-reqs" class="hidden">
+        <h3>Заявки</h3>
+        <div id="reqMsg"></div>
+        <table id="reqsTable">
+            <thead><tr><th>ID</th><th>Пользователь</th><th>Тема</th><th>Описание</th><th>Статус</th><th>Дата</th><th>Действие</th></tr></thead>
+            <tbody></tbody>
+        </table>
+    </div>
+</div>
+<div id="editModal" class="modal hidden"><div class="modal-content"><h3>Редактировать пользователя</h3><form id="editUserForm"><div class="form-group"><input placeholder="ФИО" id="editFio" required></div><div class="form-group"><input placeholder="Роль" id="editRole" required></div><div class="form-group"><input placeholder="Новый пароль (не менять — оставить пустым)" id="editPassword" type="password"></div><div class="allowed-types-group" id="editAllowedTypesGroup"></div><button type="submit">Сохранить</button><button type="button" onclick="closeEditModal()">Отмена</button></form><div id="editUserMsg"></div></div></div>
+<script>
+document.getElementById('editModal').classList.add('hidden');
+let tab = 0;
+const allTypes = ["base", "integrated", "it", "incident"];
+function showTab(n) {
+    tab = n;
+    document.getElementById('tab-users').classList.toggle('hidden', n !== 0);
+    document.getElementById('tab-reqs').classList.toggle('hidden', n !== 1);
+    if (n === 0) loadUsers();
+    else loadReqs();
+}
+function renderAllowedTypesCheckboxes(container, checkedTypes, prefix) {
+    container.innerHTML = '';
+    allTypes.forEach(type => {
+        const id = (prefix || '') + 'type_' + type;
+        container.innerHTML += `<label style="margin-right:1em;"><input type="checkbox" id="${id}" value="${type}" ${checkedTypes.includes(type) ? 'checked' : ''}> ${type}</label>`;
+    });
+}
+async function api(url, opt = {}) {
+    const r = await fetch(url, { credentials: 'include', headers: { 'Content-Type': 'application/json' }, ...opt });
+    if (!r.ok) {
+        let msg = 'Ошибка';
+        try { const d = await r.json(); if (d.error) msg = d.error; } catch { }
+        throw new Error(msg);
+    }
+    return r.json();
+}
+async function loadUsers() {
+    const t = document.querySelector('#usersTable tbody');
+    t.innerHTML = '';
+    try {
+        const users = await api('/api/admin/users');
+        for (const u of users) {
+            const types = Array.isArray(u.allowed_types) ? u.allowed_types : [];
+            t.innerHTML += `<tr><td>${u.id}</td><td>${u.login}</td><td>${u.fio}</td><td>${u.role}</td><td>${types.join(', ')}</td><td><button class='edit-btn' onclick='openEditModal(${u.id})'>Редактировать</button></td></tr>`;
+        }
+    } catch (e) {
+        t.innerHTML = `<tr><td colspan="6" class="error">${e.message}</td></tr>`;
+    }
+}
+document.getElementById('addUserForm').onsubmit = async e => {
+    e.preventDefault();
+    const login = userLogin.value.trim(), password = userPassword.value, fio = userFio.value.trim(), role = userRole.value.trim();
+    const msg = document.getElementById('userMsg');
+    const allowedTypes = Array.from(document.querySelectorAll('#allowedTypesGroup input[type=checkbox]:checked')).map(cb => cb.value);
+    if (!login || !password || !fio || !role) {
+        msg.textContent = 'Все поля обязательны'; msg.className = 'error'; return;
+    }
+    try {
+        await api('/api/admin/users', { method: 'POST', body: JSON.stringify({ login, password, fio, role, allowed_types: allowedTypes }) });
+        msg.textContent = 'Пользователь добавлен'; msg.className = '';
+        loadUsers(); userLogin.value = ''; userPassword.value = ''; userFio.value = ''; userRole.value = '';
+        renderAllowedTypesCheckboxes(document.getElementById('allowedTypesGroup'), allTypes, '');
+    } catch (e) { msg.textContent = e.message; msg.className = 'error'; }
+};
+renderAllowedTypesCheckboxes(document.getElementById('allowedTypesGroup'), allTypes, '');
+
+// --- Edit user modal ---
+let editUserId = null;
+window.openEditModal = async function(id) {
+    editUserId = id;
+    const users = await api('/api/admin/users');
+    const u = users.find(u => u.id === id);
+    if (!u) return;
+    document.getElementById('editFio').value = u.fio;
+    document.getElementById('editRole').value = u.role;
+    document.getElementById('editPassword').value = '';
+    renderAllowedTypesCheckboxes(document.getElementById('editAllowedTypesGroup'), u.allowed_types, 'edit_');
+    document.getElementById('editModal').classList.remove('hidden');
+    document.getElementById('editUserMsg').textContent = '';
+};
+window.closeEditModal = function() {
+    document.getElementById('editModal').classList.add('hidden');
+};
+document.getElementById('editUserForm').onsubmit = async function(e) {
+    e.preventDefault();
+    const fio = document.getElementById('editFio').value.trim();
+    const role = document.getElementById('editRole').value.trim();
+    const password = document.getElementById('editPassword').value;
+    const allowedTypes = Array.from(document.querySelectorAll('#editAllowedTypesGroup input[type=checkbox]:checked')).map(cb => cb.value);
+    const msg = document.getElementById('editUserMsg');
+    if (!fio || !role) { msg.textContent = 'ФИО и роль обязательны'; msg.className = 'error'; return; }
+    try {
+        await api('/api/admin/users/' + editUserId, { method: 'PUT', body: JSON.stringify({ fio, role, password, allowed_types: allowedTypes }) });
+        msg.textContent = 'Изменения сохранены'; msg.className = '';
+        loadUsers();
+        setTimeout(closeEditModal, 700);
+    } catch (e) { msg.textContent = e.message; msg.className = 'error'; }
+};
+
+async function loadReqs() {
+    const t = document.querySelector('#reqsTable tbody');
+    t.innerHTML = '';
+    try {
+        const reqs = await api('/api/admin/requests');
+        for (const r of reqs) {
+            t.innerHTML += `<tr><td>${r.id}</td><td>${r.user}</td><td>${r.title}</td><td>${r.descr || ''}</td><td><select onchange="changeStatus(${r.id}, this.value)">${["Выполнено", "Отказ", "В ожидании", "Зарегистрировано"].map(s => `<option${r.status === s ? ' selected' : ''}>${s}</option>`).join('')}</select></td><td>${r.date}</td><td></td></tr>`;
+        }
+    } catch (e) {
+        t.innerHTML = `<tr><td colspan="7" class="error">${e.message}</td></tr>`;
+    }
+}
+window.changeStatus = async function (id, status) {
+    try {
+        await api('/api/admin/request-status', { method: 'POST', body: JSON.stringify({ id, status }) });
+        loadReqs();
+    } catch (e) { alert(e.message); }
+};
+async function logout() {
+    await api('/api/logout', { method: 'POST' });
+    location.href = '/';
+}
+showTab(0);
+</script>
+</body>
+</html>
